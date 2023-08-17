@@ -120,11 +120,12 @@ jobs:
         id: dgoss
         env:
           CONTAINER_RUNTIME: docker
-          GOSS_FILE: ./containers/${{ steps.get-container-metadata.outputs.name }}/ci/goss.yaml
+          GOSS_FILE: ./${{ matrix.container }}/ci/goss.yaml
           GOSS_OPTS: --retry-timeout 60s --sleep 2s --color --format documentation
           GOSS_SLEEP: 2
           GOSS_FILES_STRATEGY: cp
           CONTAINER_LOG_OUTPUT: goss_container_log_output
         run: |
           image_name="${{ steps.prepare-build-outputs.outputs.image_name }}"
+          echo "Image Name: ${image_name}"
           dgoss run ${image_name}
