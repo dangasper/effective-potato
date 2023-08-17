@@ -1,12 +1,12 @@
 FROM registry.access.redhat.com/ubi8:8.8@sha256:8fea2399f44a9dfdfa18eec4e3e5d2e1d71f0a865dd1d5c66215a6d68ccafa8a
 
 LABEL org.opencontainers.image.created="2023-08-14T21:01:50Z" \
-      org.opencontainers.image.title: "ubi8"
-      org.opencontainers.image.description: "Red Hat Universal Base Images (UBI) are OCI-compliant container base operating system images with complementary runtime languages and packages that are freely redistributable."
-      org.opencontainers.image.licenses: "Red Hat Universal Base Image EULA"
-      org.opencontainers.image.url: "https://catalog.redhat.com/software/container-stacks/detail/5ec53f50ef29fd35586d9a56"
-      org.opencontainers.image.vendor: "Redhat"
-      org.opencontainers.image.version: "8.8"
+      org.opencontainers.image.title="ubi8"
+      org.opencontainers.image.description="Red Hat Universal Base Images (UBI) are OCI-compliant container base operating system images with complementary runtime languages and packages that are freely redistributable."
+      org.opencontainers.image.licenses="Red Hat Universal Base Image EULA"
+      org.opencontainers.image.url="https://catalog.redhat.com/software/container-stacks/detail/5ec53f50ef29fd35586d9a56"
+      org.opencontainers.image.vendor="Redhat"
+      org.opencontainers.image.version="8.8"
 
 COPY rootfs /
 
