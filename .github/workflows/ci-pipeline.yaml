@@ -79,7 +79,7 @@ jobs:
           if [[ -d "${{ matrix.container }}" ]]; then
             name="$(echo "${{ matrix.container }}" | awk -F '/' '{print $2}')"
             branch="$(echo "${{ matrix.container }}" | awk -F '/' '{print $3}')"
-            tag="$(echo "${{ matrix.container }}" | awk -F '/' -v run_number="${{ GITHUB_RUN_NUMBER }}" '{printf "%s-rc.%s", $3, run_number}')"
+            tag="$(echo "${{ matrix.container }}" | awk -F '/' -v run_number="${GITHUB_RUN_NUMBER}" '{printf "%s-rc.%s", $3, run_number}')"
             if [[ -z "${tag}" ]]; then
               echo "No tag found for: ${{ matrix.container }}"
               exit 1
