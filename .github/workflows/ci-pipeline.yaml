@@ -109,7 +109,7 @@ jobs:
         id: build
         with:
           context: .
-          file: ./containers/${{ matrix.container }}/Dockerfile
+          file: ./${{ matrix.container }}/Dockerfile
           outputs: ${{ steps.prepare-build-outputs.outputs.outputs }}
       - uses: e1himself/goss-installation-action@v1.1.0
         name: Setup Goss
