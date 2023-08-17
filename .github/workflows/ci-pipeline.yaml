@@ -108,7 +108,7 @@ jobs:
         name: Build image
         id: build
         with:
-          context: .
+          context: ./${{ matrix.container }}
           file: ./${{ matrix.container }}/Dockerfile
           outputs: ${{ steps.prepare-build-outputs.outputs.outputs }}
       - uses: e1himself/goss-installation-action@v1.1.0
