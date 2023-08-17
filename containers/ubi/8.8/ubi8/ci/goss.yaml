@@ -1,0 +1,9 @@
+command:
+  'CCE-80954-1':
+    exit-status: 0
+    exec: 'grep -e "^INACTIVE\\>" /etc/default/useradd'
+    stdout:
+    - INACTIVE=35
+    stderr: []
+    timeout: 10000
+    skip: false
