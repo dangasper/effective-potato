@@ -83,8 +83,6 @@ RUN set -eux; \
     sed -i "s/^jdk\.tls\.disabledAlgorithms=/jdk.tls.disabledAlgorithms=$disabledAlgorithms/" \
        /usr/share/crypto-policies/FIPS/java.txt;
 
-RUN echo "Test CD"
-
 ENV container oci
 ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
