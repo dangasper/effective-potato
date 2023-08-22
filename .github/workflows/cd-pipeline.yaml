@@ -1,0 +1,113 @@
+name: '[CI/CD] CD Pipeline'
+on:
+  push: 
+    branches:
+      - main
+      - effective-potato:main
+    paths:
+      - "containers/**"
+permissions: {}
+# Avoid concurrency over the same merge
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+jobs:
+  get-containers:
+    runs-on: ubuntu-latest
+    name: Get modified containers
+    outputs:
+      result: ${{ steps.get-containers.outputs.result }}
+      containers: ${{ steps.get-containers.outputs.containers }}
+    steps:
+      - id: get-containers
+        name: Get modified containers
+        env:
+          DIFF_URL: "${{github.event.pull_request.diff_url}}"
+          TEMP_FILE: "${{runner.temp}}/pr-${{github.event.number}}.diff"
+        run: |
+          # This request doesn't consume API calls.
+          curl -Lkso $TEMP_FILE $DIFF_URL
+          files_changed="$(sed -nr 's/[\-\+]{3} [ab]\/(.*)/\1/p' $TEMP_FILE | sort | uniq)"
+          # Adding || true to avoid "Process exited with code 1" errors
+          flavors=($(echo "$files_changed" | xargs dirname | grep -o "^containers/[^/]*/[^/]*/[^/]*" | sort | uniq || true))
+          echo "Flavors: ${flavors}"
+          assets=($(echo "$files_changed" | xargs dirname | sed -nr "s|containers/([^/]*)/.*|\1|p" | sort | uniq || true))
+          echo "Assets: ${assets}"
+          non_readme_files=$(echo "$files_changed" | grep -vc "\.md" || true)
+
+          if [[ "$non_readme_files" -le "0" ]]; then
+            # The only changes are .md files -> SKIP
+            echo "result=skip" >> $GITHUB_OUTPUT
+          elif [[ "${#assets[@]}" -ne "1" ]]; then
+            echo "Changes should affect to only one asset. You are currently modifying: ${assets[@]}"
+            echo "result=skip" >> $GITHUB_OUTPUT
+          else
+            containers_json=$(printf "%s\n" "${flavors[@]}" | jq -R . | jq -cs .)
+            echo "result=ok" >> $GITHUB_OUTPUT
+            echo "containers=${containers_json}" >> $GITHUB_OUTPUT
+          fi
+  build-image:
+    runs-on: ubuntu-latest
+    needs: get-containers
+    if: ${{ needs.get-containers.outputs.result == 'ok' }}
+    name: Build
+    permissions: 
+      contents: read
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        container: ${{ fromJSON(needs.get-containers.outputs.containers) }}
+    steps:
+      - uses: actions/checkout@v3
+        name: Checkout Repository
+        with:
+          # Full history is not required anymore
+          fetch-depth: 1
+          # labeled events trigger the event with the latest commit in main
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+      - id: get-container-metadata
+        name: Get image tag and container name
+        run: |
+          if [[ -d "${{ matrix.container }}" ]]; then
+            name="$(echo "${{ matrix.container }}" | awk -F '/' '{print $2}')"
+            branch="$(echo "${{ matrix.container }}" | awk -F '/' '{print $3}')"
+            tag="$(echo "${{ matrix.container }}" | awk -F '/' -v run_number="${GITHUB_RUN_NUMBER}" '{printf "%s-rc.%s", $3, run_number}')"
+            if [[ -z "${tag}" ]]; then
+              echo "No tag found for: ${{ matrix.container }}"
+              exit 1
+            else
+              echo "Image Tag: ${tag}"
+              echo "Image Name: ${name}"
+              echo "Image Branch: ${branch}"
+              echo "tag=${tag}" >> $GITHUB_OUTPUT
+              echo "name=${name}" >> $GITHUB_OUTPUT
+              echo "result=ok" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Container folder doesn't exists we are assuming a deprecation
+            echo "result=skip" >> $GITHUB_OUTPUT
+          fi
+      - uses: docker/setup-buildx-action@v2
+        name: Set up Docker Buildx
+      - name: Setup GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: prepare-build-outputs
+        name: Prepare build outputs
+        run: |
+          image_name="ghcr.io/${GITHUB_REPOSITORY_OWNER}/${{ steps.get-container-metadata.outputs.name }}"
+          outputs="type=docker,name=${image_name},push=true"
+          echo "image_name=${image_name}" >> $GITHUB_OUTPUT
+          echo "outputs=${outputs}" >> $GITHUB_OUTPUT
+      - uses: docker/build-push-action@v4
+        name: Build image
+        id: build
+        with:
+          context: ./${{ matrix.container }}
+          file: ./${{ matrix.container }}/Dockerfile
+          outputs: ${{ steps.prepare-build-outputs.outputs.outputs }}
